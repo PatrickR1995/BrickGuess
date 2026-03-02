@@ -1567,7 +1567,7 @@ function showResultModal() {
   const emojiLine = state.guesses.map(g => g.correct ? '\u{1F7E9}' : '\u{1F7E5}').join('');
   const remaining = MAX_GUESSES - state.guesses.length;
   const blanks = state.won ? '\u{1F7E8}'.repeat(remaining) : '';
-  const shareStr = `BrickGuess #${dayNum}\n${emojiLine}${blanks}\n${state.won ? MAX_GUESSES - guessesUsed + 1 : 0}/${MAX_GUESSES} guesses\nhttps://brickguess.game`;
+  const shareStr = `BrickGuess #${dayNum}\n${emojiLine}${blanks}\n${state.won ? MAX_GUESSES - guessesUsed + 1 : 0}/${MAX_GUESSES} guesses\nhttps://brickguess.pages.dev/`;
   document.getElementById('shareText').textContent = shareStr;
 
   resultModal.classList.add('show');
