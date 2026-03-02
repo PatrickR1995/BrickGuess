@@ -965,7 +965,6 @@ const statsModal = document.getElementById('statsModal');
 
 // ==================== PROGRESSIVE REVEAL ====================
 let fullImage = new Image();
-fullImage.crossOrigin = 'anonymous';
 let imageLoaded = false;
 let tileOrder = [];
 
@@ -1269,33 +1268,19 @@ function generatePlaceholderImage() {
 }
 
 // ==================== IMAGE LOADING ====================
-async function tryFetchImage(url) {
-  const resp = await fetch(url, { mode: 'cors' });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const blob = await resp.blob();
-  return URL.createObjectURL(blob);
-}
-
 async function loadImage() {
   tileOrder = generateTileOrder();
   generateBrickColors();
 
-  const url = dailySet.img_url;
-
-  try {
-    const blobUrl = await tryFetchImage(url);
-    fullImage = new Image();
-    fullImage.onload = function() {
-      imageLoaded = true;
-      render();
-    };
-    fullImage.onerror = function() {
-      generatePlaceholderImage();
-    };
-    fullImage.src = blobUrl;
-  } catch (e) {
+  fullImage = new Image();
+  fullImage.onload = function() {
+    imageLoaded = true;
+    render();
+  };
+  fullImage.onerror = function() {
     generatePlaceholderImage();
-  }
+  };
+  fullImage.src = dailySet.img_url;
 }
 
 // ==================== RENDER ====================
