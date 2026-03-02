@@ -1,0 +1,1817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrickGuess – Guess the Lego Set!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --surface: rgba(22, 33, 62, 0.85);
+      --surface-solid: #16213e;
+      --card: rgba(15, 52, 96, 0.6);
+      --accent: #e94560;
+      --yellow: #f5c518;
+      --yellow-glow: rgba(245, 197, 24, 0.15);
+      --green: #2ecc71;
+      --red: #e74c3c;
+      --red-soft: #c0392b;
+      --text: #f0f0f5;
+      --text-muted: #8888a8;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --glass: rgba(255,255,255,0.04);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,0.4);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(233, 69, 96, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(245, 197, 24, 0.06) 0%, transparent 50%),
+        radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 20px 20px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Loading Screen */
+    .loading-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 5000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      transition: opacity 0.5s;
+    }
+    .loading-screen.hidden { opacity: 0; pointer-events: none; }
+    .loading-screen h1 { font-size: 2rem; font-weight: 900; }
+    .loading-screen h1 .brick {
+      background: linear-gradient(180deg, #ffe066 0%, #f5c518 50%, #d4a20a 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .loading-screen h1 .guess {
+      background: linear-gradient(180deg, #ff6b7d 0%, #e94560 50%, #c1293e 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .loading-spinner {
+      width: 40px; height: 40px;
+      border: 4px solid var(--border-strong);
+      border-top-color: var(--yellow);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .loading-text { color: var(--text-muted); font-size: 0.85rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    header {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px 16px 4px;
+    }
+
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    header h1 .brick {
+      background: linear-gradient(180deg, #ffe066 0%, #f5c518 50%, #d4a20a 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 2px 4px rgba(245,197,24,0.3));
+    }
+
+    header h1 .guess {
+      background: linear-gradient(180deg, #ff6b7d 0%, #e94560 50%, #c1293e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 2px 4px rgba(233,69,96,0.3));
+    }
+
+    header .tagline {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 4px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .top-bar {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 500px;
+      padding: 10px 16px;
+    }
+
+    .top-bar .puzzle-num {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .top-bar .set-count {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    .top-bar .streak-badge {
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--yellow);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .top-bar .streak-badge:hover { color: #ffe066; }
+
+    .top-bar button {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+
+    .top-bar button:hover { color: var(--text); background: var(--border); }
+
+    .game-area {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      max-width: 500px;
+      padding: 0 16px 20px;
+    }
+
+    .image-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #0a0e1a;
+      box-shadow:
+        0 0 0 1px rgba(45, 106, 79, 0.15),
+        0 0 30px rgba(45, 106, 79, 0.08),
+        inset 0 0 30px rgba(0,0,0,0.5),
+        0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .image-container canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .image-container .stage-label {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--yellow);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(245, 197, 24, 0.2);
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .image-container .theme-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      display: none;
+    }
+
+    .image-container .theme-hint.show { display: block; }
+
+    .guesses-track {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      padding: 2px 0;
+    }
+
+    .guess-dot {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      border: 2px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      color: var(--text-muted);
+      box-shadow:
+        inset 0 -3px 6px rgba(0,0,0,0.25),
+        inset 0 2px 4px rgba(255,255,255,0.06),
+        0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .guess-dot.wrong {
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+      border-color: rgba(255,255,255,0.15);
+      color: #fff;
+      box-shadow:
+        inset 0 -3px 6px rgba(0,0,0,0.3),
+        inset 0 2px 4px rgba(255,255,255,0.15),
+        0 2px 12px rgba(231,76,60,0.3);
+      animation: shake 0.4s;
+    }
+
+    .guess-dot.correct {
+      background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+      border-color: rgba(255,255,255,0.15);
+      color: #fff;
+      box-shadow:
+        inset 0 -3px 6px rgba(0,0,0,0.3),
+        inset 0 2px 4px rgba(255,255,255,0.15),
+        0 2px 12px rgba(46,204,113,0.3);
+      animation: pop 0.4s;
+    }
+
+    .guess-dot.active {
+      border-color: var(--yellow);
+      box-shadow:
+        inset 0 -3px 6px rgba(0,0,0,0.25),
+        inset 0 2px 4px rgba(255,255,255,0.06),
+        0 0 16px rgba(245, 197, 24, 0.25);
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-3px); }
+      80% { transform: translateX(3px); }
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.25); }
+      100% { transform: scale(1); }
+    }
+
+    .input-area {
+      position: relative;
+      width: 100%;
+    }
+
+    .input-area .input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      pointer-events: none;
+      z-index: 2;
+      transition: color 0.2s;
+    }
+
+    .input-area input {
+      width: 100%;
+      padding: 14px 16px 14px 42px;
+      border-radius: var(--radius);
+      border: 2px solid var(--border-strong);
+      background: var(--surface);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .input-area input:focus {
+      border-color: var(--yellow);
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.15), 0 0 12px rgba(245, 197, 24, 0.15);
+    }
+
+    .input-area input:focus ~ .input-icon { color: var(--yellow); }
+
+    .input-area input::placeholder { color: var(--text-muted); font-weight: 400; }
+
+    .input-area input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .autocomplete-list {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      right: 0;
+      background: var(--surface-solid);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      max-height: 220px;
+      overflow-y: auto;
+      display: none;
+      z-index: 100;
+      margin-bottom: 6px;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .autocomplete-list.show { display: block; }
+
+    .autocomplete-item {
+      padding: 11px 14px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .autocomplete-item:last-child { border-bottom: none; }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.selected { background: rgba(245, 197, 24, 0.08); }
+
+    .autocomplete-item .set-name { font-weight: 700; }
+
+    .autocomplete-item .set-meta { font-size: 0.68rem; color: var(--text-muted); font-weight: 500; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 15px;
+      border-radius: var(--radius);
+      border: none;
+      background: linear-gradient(180deg, #ffe066 0%, #f5c518 40%, #d4a20a 100%);
+      color: #1a1a2e;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 0 #b8860b, 0 6px 16px rgba(0,0,0,0.35);
+    }
+
+    .submit-btn:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 0 #b8860b, 0 10px 20px rgba(0,0,0,0.35); }
+    .submit-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #b8860b, 0 2px 4px rgba(0,0,0,0.35); }
+    .submit-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: 0 4px 0 #b8860b, 0 6px 16px rgba(0,0,0,0.35); filter: saturate(0.5); }
+
+    .feedback {
+      text-align: center;
+      min-height: 24px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .feedback.wrong { color: var(--red); }
+    .feedback.correct { color: var(--green); }
+    .feedback.info { color: var(--text-muted); }
+
+    .guess-history {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 4px;
+      width: 100%;
+    }
+
+    .guess-history-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--surface);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .guess-history-item .icon-status { font-size: 0.85rem; width: 20px; text-align: center; }
+    .guess-history-item .icon-status.correct-icon { color: var(--green); }
+    .guess-history-item .icon-status.wrong-icon { color: var(--red); }
+    .guess-history-item .name { flex: 1; font-weight: 600; }
+
+    .guess-history-item .hints { display: flex; gap: 5px; }
+
+    .hint-pill {
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .hint-pill.match { background: rgba(46,204,113,0.2); color: var(--green); border: 1px solid rgba(46,204,113,0.3); }
+    .hint-pill.no-match { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border); }
+
+    .hint-row { display: flex; gap: 8px; justify-content: center; }
+
+    .hint-btn {
+      background: var(--glass);
+      border: 2px solid var(--border-strong);
+      color: var(--text-muted);
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .hint-btn:hover { color: var(--text); border-color: var(--yellow); transform: translateY(-1px); box-shadow: 0 3px 0 rgba(0,0,0,0.2); background: var(--yellow-glow); }
+    .hint-btn:active { transform: translateY(1px); box-shadow: none; }
+    .hint-btn.revealed { color: var(--yellow); border-color: rgba(245,197,24,0.4); background: var(--yellow-glow); }
+
+    footer {
+      padding: 16px;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-overlay.show { display: flex; animation: fadeIn 0.3s; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px) scale(0.97); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .modal {
+      background: var(--surface-solid);
+      border-radius: 20px;
+      padding: 32px 28px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      border: 1px solid var(--border-strong);
+      animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal h2 {
+      font-size: 1.4rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .modal .set-reveal { color: var(--text-muted); font-size: 0.82rem; margin-bottom: 18px; font-weight: 500; }
+
+    .modal .result-image { width: 100%; border-radius: var(--radius); margin-bottom: 18px; }
+
+    .modal .score-display {
+      font-size: 1.8rem;
+      font-weight: 900;
+      margin-bottom: 4px;
+      background: linear-gradient(135deg, var(--yellow) 0%, #fca311 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .modal .score-label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .modal .share-text {
+      background: rgba(0,0,0,0.3);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: 'Inter', monospace;
+      font-size: 0.82rem;
+      margin-bottom: 18px;
+      white-space: pre-line;
+      user-select: all;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .modal .btn-row { display: flex; gap: 10px; }
+
+    .modal .btn-row button {
+      flex: 1;
+      padding: 13px;
+      border-radius: var(--radius);
+      border: none;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .modal .btn-share {
+      background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+      color: #fff;
+      box-shadow: 0 3px 0 #1e8c52, 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .modal .btn-share:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .modal .btn-share:active { transform: translateY(1px); box-shadow: 0 1px 0 #1e8c52; }
+
+    .modal .btn-close {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .modal .btn-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin: 20px 0;
+    }
+
+    .stat-item {
+      text-align: center;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+      padding: 16px 8px;
+      border: 1px solid var(--border);
+    }
+
+    .stat-item .stat-val {
+      font-size: 1.6rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--yellow) 0%, #fca311 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-item .stat-label {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+    button, .hint-btn, .submit-btn, .autocomplete-item { -webkit-tap-highlight-color: transparent; }
+
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2000;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div class="loading-screen" id="loadingScreen">
+  <h1><span class="brick">Brick</span><span class="guess">Guess</span></h1>
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">Loading sets...</div>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+
+<header>
+  <h1><span class="brick">Brick</span><span class="guess">Guess</span></h1>
+  <div class="tagline">Guess the Lego set before it's fully built!</div>
+</header>
+
+<div class="top-bar">
+  <div>
+    <span class="puzzle-num" id="puzzleNum">#1</span>
+    <span class="set-count" id="setCount"></span>
+  </div>
+  <span class="streak-badge" id="streakBadge" title="Stats"><i class="fa-solid fa-fire"></i> <span id="streakText">0 streak</span></span>
+  <button id="statsBtn" title="Statistics"><i class="fa-solid fa-chart-simple"></i></button>
+</div>
+
+<div class="game-area">
+  <div class="image-container">
+    <canvas id="revealCanvas"></canvas>
+    <div class="stage-label" id="stageLabel"><i class="fa-solid fa-layer-group"></i> Stage 1/5</div>
+    <div class="theme-hint" id="themeHint"></div>
+  </div>
+
+  <div class="guesses-track" id="guessesTrack">
+    <div class="guess-dot active"></div>
+    <div class="guess-dot"></div>
+    <div class="guess-dot"></div>
+    <div class="guess-dot"></div>
+    <div class="guess-dot"></div>
+  </div>
+
+  <div class="hint-row" id="hintRow">
+    <button class="hint-btn" id="hintTheme" data-hint="theme"><i class="fa-solid fa-tag"></i> Theme</button>
+    <button class="hint-btn" id="hintPieces" data-hint="pieces"><i class="fa-solid fa-cubes"></i> Pieces</button>
+    <button class="hint-btn" id="hintYear" data-hint="year"><i class="fa-regular fa-calendar"></i> Year</button>
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+
+  <div class="guess-history" id="guessHistory"></div>
+
+  <div class="input-area">
+    <div class="autocomplete-list" id="autocompleteList"></div>
+    <i class="fa-solid fa-magnifying-glass input-icon"></i>
+    <label for="guessInput" class="sr-only">Guess a Lego set</label>
+    <input type="text" id="guessInput" placeholder="Type a Lego set name..." autocomplete="off" />
+  </div>
+
+  <button class="submit-btn" id="submitBtn"><i class="fa-solid fa-paper-plane"></i> Guess</button>
+</div>
+
+<footer><i class="fa-solid fa-cube"></i> BrickGuess — a daily Lego guessing game</footer>
+
+<!-- Result Modal -->
+<div class="modal-overlay" id="resultModal">
+  <div class="modal">
+    <h2 id="resultTitle"><i class="fa-solid fa-trophy" style="color:var(--yellow)"></i> You Got It!</h2>
+    <div class="set-reveal" id="resultSetInfo"></div>
+    <canvas id="resultCanvas" class="result-image" width="300" height="300"></canvas>
+    <div class="score-display" id="resultScore">5/5</div>
+    <div class="score-label">guesses remaining</div>
+    <div class="share-text" id="shareText"></div>
+    <div class="btn-row">
+      <button class="btn-share" id="shareBtn"><i class="fa-regular fa-clipboard"></i> Copy Result</button>
+      <button class="btn-close" id="closeModalBtn"><i class="fa-solid fa-xmark"></i> Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stats Modal -->
+<div class="modal-overlay" id="statsModal">
+  <div class="modal">
+    <h2><i class="fa-solid fa-chart-simple" style="color:var(--yellow)"></i> Statistics</h2>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-val" id="statPlayed">0</div>
+        <div class="stat-label">Played</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="statWon">0</div>
+        <div class="stat-label">Won</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="statStreak">0</div>
+        <div class="stat-label">Streak</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="statTotal">0</div>
+        <div class="stat-label">Total Sets</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-close" id="closeStatsBtn"><i class="fa-solid fa-xmark"></i> Close</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// roundRect polyfill
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+    const r = Array.isArray(radii) ? radii : [radii, radii, radii, radii];
+    const [tl, tr, br, bl] = [r[0]||0, r[1]||r[0]||0, r[2]||r[0]||0, r[3]||r[1]||r[0]||0];
+    this.moveTo(x + tl, y);
+    this.lineTo(x + w - tr, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + tr);
+    this.lineTo(x + w, y + h - br);
+    this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+    this.lineTo(x + bl, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - bl);
+    this.lineTo(x, y + tl);
+    this.quadraticCurveTo(x, y, x + tl, y);
+    this.closePath();
+    return this;
+  };
+}
+
+// ==================== THEME ID → NAME MAPPING ====================
+const THEME_MAP = {
+  1: 'Technic', 2: 'Arctic', 3: 'Boats', 4: 'Creator', 5: 'Model Team',
+  6: 'Town', 7: 'Belville', 8: 'Trains', 9: 'Castle', 10: 'Dinosaurs',
+  11: 'Fabuland', 12: 'Scala', 13: 'Space', 14: 'Pirates', 15: 'Aquazone',
+  16: 'Western', 17: 'Adventurers', 18: 'Znap', 19: 'Pirates', 20: 'Rock Raiders',
+  21: 'Mindstorms', 22: 'Alpha Team', 23: 'Bionicle', 24: 'Designer Sets',
+  25: 'Power Miners', 26: 'Vikings', 28: 'Gravity Games', 34: 'Dino Attack',
+  36: 'Exo-Force', 42: 'Racers', 50: 'Homemaker', 51: 'Clikits',
+  52: 'Quatro', 53: 'Island Xtreme Stunts', 54: 'Life on Mars',
+  56: 'Orient Expedition', 57: 'Jack Stone', 58: 'World City',
+  59: 'Spider-Man', 61: 'Discovery', 62: 'Sports',
+  63: 'Explore', 65: 'Factory', 66: 'City', 67: 'Agents',
+  68: 'Mars Mission', 69: 'Castle', 71: 'Batman', 72: 'Indiana Jones',
+  73: 'Power Miners', 74: 'Aqua Raiders', 75: 'Space Police',
+  78: 'Speed Racer', 80: 'Atlantis', 81: 'Prince of Persia',
+  84: 'Hero Factory', 85: 'Toy Story', 86: 'Cars', 87: 'Ben 10',
+  89: 'Ninjago', 90: 'Pharaoh\'s Quest', 91: 'Alien Conquest',
+  95: 'Dino', 96: 'Monster Fighters', 97: 'Legends of Chima',
+  101: 'The Lone Ranger', 102: 'Teenage Mutant Ninja Turtles',
+  103: 'The Hobbit', 104: 'Galaxy Squad', 105: 'Ultra Agents',
+  109: 'The LEGO Movie', 110: 'Scooby-Doo', 111: 'Mixels',
+  112: 'Speed Champions', 113: 'DC Super Hero Girls',
+  119: 'Pirates of the Caribbean', 126: 'Nexo Knights',
+  130: 'Angry Birds', 131: 'BrickHeadz', 132: 'The Batman Movie',
+  133: 'Boost', 134: 'Elves', 135: 'LEGO Ideas', 136: 'Disney',
+  144: 'Minecraft', 145: 'The LEGO Ninjago Movie',
+  146: 'Unikitty', 147: 'Jurassic World', 148: 'Overwatch',
+  149: 'The Powerpuff Girls', 150: 'The LEGO Movie 2',
+  153: 'Trolls World Tour', 154: 'Hidden Side',
+  155: 'Modular Buildings', 156: 'Monkie Kid', 157: 'VIDIYO',
+  158: 'Star Wars', 159: 'Minions', 160: 'Dots',
+  161: 'Architecture', 162: 'Marvel', 163: 'Seasonal',
+  171: 'Star Wars UCS', 246: 'Harry Potter',
+  252: 'Duplo', 279: 'Super Heroes', 284: 'Friends',
+  344: 'Art', 362: 'Avatar', 390: 'Dimensions',
+  408: 'MOC', 435: 'Education', 494: 'Classic',
+  497: 'Minifigures', 501: 'City', 503: 'Gear',
+  504: 'Promotional', 507: 'Basic', 508: 'Service Packs',
+  509: 'Supplemental', 531: 'DUPLO', 559: 'Books',
+  560: 'Universal Building Set', 576: 'Ideas',
+  577: 'Serious Play', 579: 'Dacta', 590: 'Educational',
+  598: 'Other', 604: 'Master Builder Academy', 606: 'Primo',
+  608: 'Sculptures', 615: 'Game', 621: 'Creator Expert',
+  688: 'Dreamzzz', 690: 'Super Mario', 691: 'Powered Up',
+  695: 'Animal Crossing', 696: 'Fortnite',
+  697: 'Wicked', 698: 'Sonic the Hedgehog',
+  700: 'Icons', 701: 'Creator 3-in-1',
+  706: 'Marvel', 707: 'DC', 708: 'Disney',
+  709: 'Gabby\'s Dollhouse', 721: 'Icons',
+  731: 'Gear', 736: 'Promotional', 739: 'Gear',
+  740: 'Gear', 741: 'Gear', 742: 'Video Games',
+  743: 'Books', 758: 'Books', 761: 'Books',
+  769: 'Botanical', 771: 'Duplo', 777: 'Gear',
+};
+
+function getThemeName(themeId) {
+  return THEME_MAP[themeId] || 'LEGO';
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + ch;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function getTodayString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getDayNumber() {
+  const start = new Date('2025-01-01');
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  return Math.floor((now - start) / 86400000) + 1;
+}
+
+function getDailySet(allSets) {
+  const seed = hashCode(getTodayString());
+  const idx = seed % allSets.length;
+  return allSets[idx];
+}
+
+// ==================== STORAGE ====================
+function loadState() {
+  try { return JSON.parse(localStorage.getItem('brickguess_state')) || {}; }
+  catch { return {}; }
+}
+
+function saveState(st) {
+  localStorage.setItem('brickguess_state', JSON.stringify(st));
+}
+
+function loadStats() {
+  try { return JSON.parse(localStorage.getItem('brickguess_stats')) || { played: 0, won: 0, streak: 0, maxStreak: 0, lastDate: '' }; }
+  catch { return { played: 0, won: 0, streak: 0, maxStreak: 0, lastDate: '' }; }
+}
+
+function saveStats(stats) {
+  localStorage.setItem('brickguess_stats', JSON.stringify(stats));
+}
+
+// ==================== MAIN INIT ====================
+const MAX_GUESSES = 5;
+const today = getTodayString();
+const dayNum = getDayNumber();
+
+let LEGO_SETS = []; // filled after CSV load
+let dailySet = null;
+let state = {};
+let selectedSetId = null;
+let autocompleteIdx = -1;
+
+// DOM elements
+const canvasEl = document.getElementById('revealCanvas');
+const ctxEl = canvasEl.getContext('2d');
+const resultCanvas = document.getElementById('resultCanvas');
+const resultCtx = resultCanvas.getContext('2d');
+
+const guessInput = document.getElementById('guessInput');
+const submitBtn = document.getElementById('submitBtn');
+const autocompleteList = document.getElementById('autocompleteList');
+const guessesTrack = document.getElementById('guessesTrack');
+const feedbackEl = document.getElementById('feedback');
+const guessHistory = document.getElementById('guessHistory');
+const stageLabel = document.getElementById('stageLabel');
+const themeHint = document.getElementById('themeHint');
+const puzzleNum = document.getElementById('puzzleNum');
+const streakBadge = document.getElementById('streakBadge');
+const resultModal = document.getElementById('resultModal');
+const statsModal = document.getElementById('statsModal');
+
+// ==================== PROGRESSIVE REVEAL ====================
+let fullImage = new Image();
+fullImage.crossOrigin = 'anonymous';
+let imageLoaded = false;
+let tileOrder = [];
+
+const COLS = 16;
+const ROWS = 20;
+const TOTAL_BRICKS = COLS * ROWS;
+
+const STAGES = [6, 14, 25, 42, 65];
+const PIXEL_FACTOR = [8, 5, 3, 2, 1];
+
+const BRICK_PALETTE = [
+  '#e63946', '#c1121f', '#d62828',
+  '#f77f00', '#fcbf49', '#f5c518',
+  '#2d6a4f', '#40916c', '#52b788',
+  '#0077b6', '#0096c7', '#00b4d8',
+  '#7b2d8e', '#9b5de5',
+  '#ffffff', '#f8f9fa', '#dee2e6',
+];
+
+let brickColors = [];
+
+function generateTileOrder() {
+  const seed = hashCode(today + dailySet.set_num);
+  const rng = mulberry32(seed);
+  const tiles = [];
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      tiles.push({ x, y });
+    }
+  }
+  for (let i = tiles.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+  }
+  return tiles;
+}
+
+function generateBrickColors() {
+  const seed = hashCode(today + dailySet.set_num + 'colors');
+  const rng = mulberry32(seed);
+  brickColors = [];
+  for (let i = 0; i < TOTAL_BRICKS; i++) {
+    brickColors.push(BRICK_PALETTE[Math.floor(rng() * BRICK_PALETTE.length)]);
+  }
+}
+
+function getImageCrop() {
+  const imgAspect = fullImage.width / fullImage.height;
+  let sx = 0, sy = 0, sw = fullImage.width, sh = fullImage.height;
+  if (imgAspect > 1) {
+    sw = fullImage.height;
+    sx = (fullImage.width - sw) / 2;
+  } else {
+    sh = fullImage.width;
+    sy = (fullImage.height - sh) / 2;
+  }
+  return { sx, sy, sw, sh };
+}
+
+function drawBrick3D(cx, bx, by, bw, bh, color) {
+  const r = Math.min(bw, bh) * 0.08;
+  const inset = 1;
+
+  cx.fillStyle = color;
+  cx.beginPath();
+  cx.roundRect(bx + inset, by + inset, bw - inset * 2, bh - inset * 2, r);
+  cx.fill();
+
+  cx.fillStyle = 'rgba(255,255,255,0.25)';
+  cx.beginPath();
+  cx.roundRect(bx + inset, by + inset, bw - inset * 2, bh * 0.18, [r, r, 0, 0]);
+  cx.fill();
+
+  cx.fillStyle = 'rgba(255,255,255,0.12)';
+  cx.fillRect(bx + inset, by + inset + bh * 0.18, bw * 0.08, bh * 0.64);
+
+  cx.fillStyle = 'rgba(0,0,0,0.2)';
+  cx.beginPath();
+  cx.roundRect(bx + inset, by + bh - bh * 0.15 - inset, bw - inset * 2, bh * 0.15, [0, 0, r, r]);
+  cx.fill();
+
+  cx.fillStyle = 'rgba(0,0,0,0.12)';
+  cx.fillRect(bx + bw - bw * 0.08 - inset, by + inset + bh * 0.18, bw * 0.08, bh * 0.64);
+
+  const studR = Math.min(bw, bh) * 0.16;
+  const studY = by + bh * 0.42;
+  const studs = [
+    { cx: bx + bw * 0.3, cy: studY },
+    { cx: bx + bw * 0.7, cy: studY },
+  ];
+
+  for (const s of studs) {
+    cx.beginPath();
+    cx.arc(s.cx, s.cy + studR * 0.15, studR, 0, Math.PI * 2);
+    cx.fillStyle = 'rgba(0,0,0,0.2)';
+    cx.fill();
+
+    cx.beginPath();
+    cx.arc(s.cx, s.cy, studR, 0, Math.PI * 2);
+    cx.fillStyle = color;
+    cx.fill();
+
+    cx.beginPath();
+    cx.arc(s.cx - studR * 0.15, s.cy - studR * 0.15, studR * 0.6, 0, Math.PI * 2);
+    cx.fillStyle = 'rgba(255,255,255,0.3)';
+    cx.fill();
+
+    cx.beginPath();
+    cx.arc(s.cx, s.cy, studR, 0, Math.PI * 2);
+    cx.strokeStyle = 'rgba(0,0,0,0.15)';
+    cx.lineWidth = 1;
+    cx.stroke();
+  }
+}
+
+function drawBrickRevealed(cx, bx, by, bw, bh, tileX, tileY, pixFactor, crop) {
+  const inset = 1;
+  const r = Math.min(bw, bh) * 0.08;
+
+  cx.save();
+  cx.beginPath();
+  cx.roundRect(bx + inset, by + inset, bw - inset * 2, bh - inset * 2, r);
+  cx.clip();
+
+  const srcX = crop.sx + (tileX / COLS) * crop.sw;
+  const srcY = crop.sy + (tileY / ROWS) * crop.sh;
+  const srcW = crop.sw / COLS;
+  const srcH = crop.sh / ROWS;
+
+  if (pixFactor > 1) {
+    const smallW = Math.max(2, Math.floor(bw / pixFactor));
+    const smallH = Math.max(2, Math.floor(bh / pixFactor));
+    const off = document.createElement('canvas');
+    off.width = smallW;
+    off.height = smallH;
+    const oc = off.getContext('2d');
+    oc.imageSmoothingEnabled = true;
+    oc.drawImage(fullImage, srcX, srcY, srcW, srcH, 0, 0, smallW, smallH);
+    cx.imageSmoothingEnabled = false;
+    cx.drawImage(off, 0, 0, smallW, smallH, bx + inset, by + inset, bw - inset * 2, bh - inset * 2);
+    cx.imageSmoothingEnabled = true;
+  } else {
+    cx.drawImage(fullImage, srcX, srcY, srcW, srcH, bx + inset, by + inset, bw - inset * 2, bh - inset * 2);
+  }
+
+  cx.restore();
+
+  const studR = Math.min(bw, bh) * 0.13;
+  const studY = by + bh * 0.42;
+  const studs = [
+    { cx: bx + bw * 0.3, cy: studY },
+    { cx: bx + bw * 0.7, cy: studY },
+  ];
+  for (const s of studs) {
+    cx.beginPath();
+    cx.arc(s.cx, s.cy + studR * 0.1, studR, 0, Math.PI * 2);
+    cx.fillStyle = 'rgba(0,0,0,0.12)';
+    cx.fill();
+
+    cx.beginPath();
+    cx.arc(s.cx, s.cy, studR, 0, Math.PI * 2);
+    cx.strokeStyle = 'rgba(255,255,255,0.2)';
+    cx.lineWidth = 1.5;
+    cx.stroke();
+
+    cx.beginPath();
+    cx.arc(s.cx - studR * 0.2, s.cy - studR * 0.2, studR * 0.35, 0, Math.PI * 2);
+    cx.fillStyle = 'rgba(255,255,255,0.15)';
+    cx.fill();
+  }
+
+  cx.strokeStyle = 'rgba(0,0,0,0.18)';
+  cx.lineWidth = 1.5;
+  cx.beginPath();
+  cx.roundRect(bx + inset, by + inset, bw - inset * 2, bh - inset * 2, r);
+  cx.stroke();
+}
+
+function drawReveal(stageIndex, targetCanvas, targetCtx) {
+  const c = targetCanvas;
+  const cx = targetCtx;
+  const w = c.width;
+  const h = c.height;
+
+  cx.clearRect(0, 0, w, h);
+  cx.fillStyle = '#1a1a2e';
+  cx.fillRect(0, 0, w, h);
+
+  cx.strokeStyle = 'rgba(255,255,255,0.03)';
+  cx.lineWidth = 0.5;
+  const miniGrid = w / 32;
+  for (let gy = 0; gy <= 32; gy++) {
+    cx.beginPath(); cx.moveTo(0, gy * miniGrid); cx.lineTo(w, gy * miniGrid); cx.stroke();
+  }
+  for (let gx = 0; gx <= 32; gx++) {
+    cx.beginPath(); cx.moveTo(gx * miniGrid, 0); cx.lineTo(gx * miniGrid, h); cx.stroke();
+  }
+
+  const bw = w / COLS;
+  const bh = h / ROWS;
+
+  if (!imageLoaded) {
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const idx = y * COLS + x;
+        drawBrick3D(cx, x * bw, y * bh, bw, bh, brickColors[idx] || '#2a2a4a');
+      }
+    }
+    cx.fillStyle = 'rgba(255,255,255,0.25)';
+    cx.font = `bold ${w * 0.05}px sans-serif`;
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    cx.fillText('Loading...', w / 2, h / 2);
+    return;
+  }
+
+  const pct = STAGES[Math.min(stageIndex, 4)];
+  const pixFactor = PIXEL_FACTOR[Math.min(stageIndex, 4)];
+  const tilesToShow = Math.floor((pct / 100) * tileOrder.length);
+  const crop = getImageCrop();
+
+  const revealed = new Set();
+  for (let i = 0; i < tilesToShow; i++) {
+    const t = tileOrder[i];
+    revealed.add(t.y * COLS + t.x);
+  }
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const idx = y * COLS + x;
+      if (revealed.has(idx)) {
+        drawBrickRevealed(cx, x * bw, y * bh, bw, bh, x, y, pixFactor, crop);
+      } else {
+        drawBrick3D(cx, x * bw, y * bh, bw, bh, brickColors[idx]);
+      }
+    }
+  }
+}
+
+function drawFull(targetCanvas, targetCtx) {
+  const c = targetCanvas;
+  const cx = targetCtx;
+  const w = c.width;
+  const h = c.height;
+  cx.clearRect(0, 0, w, h);
+  if (!imageLoaded) return;
+  const crop = getImageCrop();
+  const bw = w / COLS;
+  const bh = h / ROWS;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      drawBrickRevealed(cx, x * bw, y * bh, bw, bh, x, y, 1, crop);
+    }
+  }
+}
+
+// ==================== PLACEHOLDER IMAGE ====================
+function generatePlaceholderImage() {
+  const offscreen = document.createElement('canvas');
+  offscreen.width = 600;
+  offscreen.height = 600;
+  const oc = offscreen.getContext('2d');
+
+  // Generate a color from the set name
+  const nameHash = hashCode(dailySet.name);
+  const hue = nameHash % 360;
+  oc.fillStyle = `hsl(${hue}, 60%, 40%)`;
+  oc.fillRect(0, 0, 600, 600);
+
+  const brickW = 60;
+  const brickH = 30;
+  const rng = mulberry32(nameHash);
+
+  for (let y = 0; y < 600; y += brickH) {
+    const offset = (Math.floor(y / brickH) % 2) * (brickW / 2);
+    for (let x = -brickW; x < 620; x += brickW) {
+      const lightness = 30 + rng() * 30;
+      oc.fillStyle = `hsl(${hue}, ${50 + rng() * 20}%, ${lightness}%)`;
+      oc.fillRect(x + offset, y, brickW - 2, brickH - 2);
+      oc.beginPath();
+      oc.arc(x + offset + brickW/4, y + brickH/2, 5, 0, Math.PI * 2);
+      oc.arc(x + offset + 3*brickW/4, y + brickH/2, 5, 0, Math.PI * 2);
+      oc.fillStyle = 'rgba(255,255,255,0.2)';
+      oc.fill();
+    }
+  }
+
+  oc.fillStyle = 'rgba(0,0,0,0.15)';
+  oc.font = 'bold 48px sans-serif';
+  oc.textAlign = 'center';
+  oc.textBaseline = 'middle';
+  oc.fillText(dailySet.set_num, 300, 300);
+
+  const dataUrl = offscreen.toDataURL();
+  fullImage = new Image();
+  fullImage.onload = function() {
+    imageLoaded = true;
+    render();
+  };
+  fullImage.src = dataUrl;
+}
+
+// ==================== IMAGE LOADING ====================
+async function tryFetchImage(url) {
+  const resp = await fetch(url, { mode: 'cors' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const blob = await resp.blob();
+  return URL.createObjectURL(blob);
+}
+
+async function loadImage() {
+  tileOrder = generateTileOrder();
+  generateBrickColors();
+
+  const url = dailySet.img_url;
+
+  try {
+    const blobUrl = await tryFetchImage(url);
+    fullImage = new Image();
+    fullImage.onload = function() {
+      imageLoaded = true;
+      render();
+    };
+    fullImage.onerror = function() {
+      generatePlaceholderImage();
+    };
+    fullImage.src = blobUrl;
+  } catch (e) {
+    generatePlaceholderImage();
+  }
+}
+
+// ==================== RENDER ====================
+function render() {
+  if (!dailySet) return;
+
+  const container = canvasEl.parentElement;
+  const size = container.clientWidth;
+  canvasEl.width = size;
+  canvasEl.height = size;
+  canvasEl.style.width = size + 'px';
+  canvasEl.style.height = size + 'px';
+
+  if (state.won) {
+    drawFull(canvasEl, ctxEl);
+  } else if (state.finished) {
+    drawReveal(4, canvasEl, ctxEl);
+  } else {
+    drawReveal(state.stage, canvasEl, ctxEl);
+  }
+
+  // Stage label
+  if (state.finished) {
+    stageLabel.innerHTML = state.won
+      ? '<i class="fa-solid fa-circle-check"></i> Solved!'
+      : '<i class="fa-solid fa-circle-xmark"></i> Revealed';
+  } else {
+    stageLabel.innerHTML = `<i class="fa-solid fa-layer-group"></i> Stage ${state.stage + 1}/5`;
+  }
+
+  // Guesses track
+  const dots = guessesTrack.children;
+  for (let i = 0; i < MAX_GUESSES; i++) {
+    dots[i].className = 'guess-dot';
+    if (i < state.guesses.length) {
+      const g = state.guesses[i];
+      if (g.correct) {
+        dots[i].classList.add('correct');
+        dots[i].innerHTML = '<i class="fa-solid fa-check"></i>';
+      } else {
+        dots[i].classList.add('wrong');
+        dots[i].innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      }
+    } else if (i === state.guesses.length && !state.finished) {
+      dots[i].classList.add('active');
+      dots[i].textContent = '';
+    } else {
+      dots[i].textContent = '';
+    }
+  }
+
+  // Guess history
+  guessHistory.innerHTML = '';
+  state.guesses.forEach(g => {
+    const div = document.createElement('div');
+    div.className = 'guess-history-item';
+    const set = LEGO_SETS.find(s => s.set_num === g.id);
+    const themeMatch = set && set.theme === dailySet.theme;
+    const piecesClose = set && Math.abs(set.pieces - dailySet.pieces) < 500;
+    div.innerHTML = `
+      <span class="icon-status ${g.correct ? 'correct-icon' : 'wrong-icon'}"><i class="fa-solid ${g.correct ? 'fa-circle-check' : 'fa-circle-xmark'}"></i></span>
+      <span class="name">${g.name}</span>
+      <span class="hints">
+        <span class="hint-pill ${themeMatch ? 'match' : 'no-match'}">${set ? set.theme : '?'}</span>
+        <span class="hint-pill ${piecesClose ? 'match' : 'no-match'}">${set ? set.pieces + 'pc' : '?'}</span>
+      </span>
+    `;
+    guessHistory.appendChild(div);
+  });
+
+  // Input state
+  guessInput.disabled = state.finished;
+  if (state.finished) {
+    submitBtn.disabled = true;
+    guessInput.placeholder = state.won ? 'You got it!' : `It was: ${dailySet.name}`;
+  } else {
+    submitBtn.disabled = false;
+    guessInput.placeholder = 'Type a Lego set name...';
+  }
+
+  // Puzzle number & set count
+  puzzleNum.textContent = `#${dayNum}`;
+  document.getElementById('setCount').textContent = `${LEGO_SETS.length.toLocaleString()} sets`;
+
+  // Stats
+  const stats = loadStats();
+  document.getElementById('streakText').textContent = `${stats.streak} streak`;
+}
+
+// ==================== AUTOCOMPLETE ====================
+function updateAutocomplete(query) {
+  autocompleteList.innerHTML = '';
+  autocompleteIdx = -1;
+
+  if (!query || query.length < 2) {
+    autocompleteList.classList.remove('show');
+    return;
+  }
+
+  // Split query into individual keywords — ALL must match somewhere
+  const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+
+  const matches = LEGO_SETS.filter(s =>
+    words.every(w => s._keywords.includes(w))
+  ).slice(0, 8);
+
+  if (matches.length === 0) {
+    autocompleteList.classList.remove('show');
+    return;
+  }
+
+  matches.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item';
+    div.dataset.id = s.set_num;
+    div.innerHTML = `
+      <span class="set-name">${highlightMatch(s.name, words)}</span>
+      <span class="set-meta">${s.set_num} · ${s.theme} · ${s.year}</span>
+    `;
+    div.addEventListener('click', () => selectSet(s));
+    autocompleteList.appendChild(div);
+  });
+
+  autocompleteList.classList.add('show');
+}
+
+function highlightMatch(name, words) {
+  // Highlight all matched words in the name
+  let result = name;
+  const lower = name.toLowerCase();
+  // Collect all match ranges
+  const ranges = [];
+  for (const w of words) {
+    let pos = 0;
+    while (pos < lower.length) {
+      const idx = lower.indexOf(w, pos);
+      if (idx === -1) break;
+      ranges.push([idx, idx + w.length]);
+      pos = idx + 1;
+    }
+  }
+  if (ranges.length === 0) return name;
+  // Merge overlapping ranges
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [ranges[0]];
+  for (let i = 1; i < ranges.length; i++) {
+    const last = merged[merged.length - 1];
+    if (ranges[i][0] <= last[1]) {
+      last[1] = Math.max(last[1], ranges[i][1]);
+    } else {
+      merged.push(ranges[i]);
+    }
+  }
+  // Build highlighted string from right to left to preserve indices
+  for (let i = merged.length - 1; i >= 0; i--) {
+    const [start, end] = merged[i];
+    result = result.slice(0, start)
+      + '<strong style="color:var(--yellow)">' + result.slice(start, end) + '</strong>'
+      + result.slice(end);
+  }
+  return result;
+}
+
+function selectSet(set) {
+  guessInput.value = set.name;
+  selectedSetId = set.set_num;
+  autocompleteList.classList.remove('show');
+}
+
+// ==================== GUESS LOGIC ====================
+function submitGuess() {
+  if (state.finished || !dailySet) return;
+
+  if (!selectedSetId) {
+    const q = guessInput.value.trim().toLowerCase();
+    const match = LEGO_SETS.find(s => s.name.toLowerCase() === q);
+    if (match) {
+      selectedSetId = match.set_num;
+    } else {
+      feedbackEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Please select a set from the suggestions';
+      feedbackEl.className = 'feedback info';
+      return;
+    }
+  }
+
+  const guessedSet = LEGO_SETS.find(s => s.set_num === selectedSetId);
+  if (!guessedSet) return;
+
+  const isCorrect = selectedSetId === dailySet.set_num;
+
+  state.guesses.push({
+    id: selectedSetId,
+    name: guessedSet.name,
+    correct: isCorrect,
+  });
+
+  if (isCorrect) {
+    state.finished = true;
+    state.won = true;
+    feedbackEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Correct! You guessed it!';
+    feedbackEl.className = 'feedback correct';
+    updateStats(true);
+    saveState(state);
+    render();
+    showConfetti();
+    setTimeout(() => showResultModal(), 1500);
+  } else {
+    state.stage = Math.min(state.stage + 1, 4);
+    feedbackEl.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Not "${guessedSet.name}" — ${MAX_GUESSES - state.guesses.length} guesses left`;
+    feedbackEl.className = 'feedback wrong';
+
+    if (state.guesses.length >= MAX_GUESSES) {
+      state.finished = true;
+      state.won = false;
+      feedbackEl.innerHTML = `<i class="fa-solid fa-face-sad-tear"></i> It was "${dailySet.name}"!`;
+      updateStats(false);
+      saveState(state);
+      render();
+      setTimeout(() => showResultModal(), 1500);
+    } else {
+      saveState(state);
+      render();
+    }
+  }
+
+  guessInput.value = '';
+  selectedSetId = null;
+}
+
+// ==================== STATS ====================
+function updateStats(won) {
+  const stats = loadStats();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+
+  stats.played++;
+  if (won) {
+    stats.won++;
+    if (stats.lastDate === yesterdayStr) {
+      stats.streak++;
+    } else {
+      stats.streak = 1;
+    }
+    stats.maxStreak = Math.max(stats.maxStreak, stats.streak);
+  } else {
+    stats.streak = 0;
+  }
+  stats.lastDate = today;
+  saveStats(stats);
+}
+
+// ==================== RESULT MODAL ====================
+function showResultModal() {
+  const guessesUsed = state.guesses.length;
+
+  document.getElementById('resultTitle').innerHTML = state.won
+    ? '<i class="fa-solid fa-trophy" style="color:var(--yellow)"></i> You Got It!'
+    : '<i class="fa-solid fa-face-sad-tear" style="color:var(--red)"></i> Better Luck Tomorrow!';
+  document.getElementById('resultSetInfo').textContent = `${dailySet.name} (${dailySet.set_num}) · ${dailySet.theme} · ${dailySet.pieces} pieces · ${dailySet.year}`;
+  document.getElementById('resultScore').textContent = state.won ? `${MAX_GUESSES - guessesUsed + 1}/${MAX_GUESSES}` : `0/${MAX_GUESSES}`;
+
+  resultCanvas.width = 300;
+  resultCanvas.height = 300;
+  if (imageLoaded) {
+    drawFull(resultCanvas, resultCtx);
+  }
+
+  const emojiLine = state.guesses.map(g => g.correct ? '\u{1F7E9}' : '\u{1F7E5}').join('');
+  const remaining = MAX_GUESSES - state.guesses.length;
+  const blanks = state.won ? '\u{1F7E8}'.repeat(remaining) : '';
+  const shareStr = `BrickGuess #${dayNum}\n${emojiLine}${blanks}\n${state.won ? MAX_GUESSES - guessesUsed + 1 : 0}/${MAX_GUESSES} guesses\nhttps://brickguess.game`;
+  document.getElementById('shareText').textContent = shareStr;
+
+  resultModal.classList.add('show');
+}
+
+// ==================== HINTS ====================
+document.getElementById('hintTheme').addEventListener('click', function() {
+  if (state.finished || !dailySet) return;
+  this.innerHTML = `<i class="fa-solid fa-tag"></i> ${dailySet.theme}`;
+  this.classList.add('revealed');
+  themeHint.textContent = `Theme: ${dailySet.theme}`;
+  themeHint.classList.add('show');
+});
+
+document.getElementById('hintPieces').addEventListener('click', function() {
+  if (state.finished || !dailySet) return;
+  this.innerHTML = `<i class="fa-solid fa-cubes"></i> ${dailySet.pieces} pcs`;
+  this.classList.add('revealed');
+});
+
+document.getElementById('hintYear').addEventListener('click', function() {
+  if (state.finished || !dailySet) return;
+  this.innerHTML = `<i class="fa-regular fa-calendar"></i> ${dailySet.year}`;
+  this.classList.add('revealed');
+});
+
+// ==================== CONFETTI ====================
+function showConfetti() {
+  const confCanvas = document.getElementById('confetti-canvas');
+  const cctx = confCanvas.getContext('2d');
+  confCanvas.width = window.innerWidth;
+  confCanvas.height = window.innerHeight;
+
+  const particles = [];
+  const colors = ['#e63946', '#c1121f', '#f5c518', '#fca311', '#2d6a4f', '#0077b6', '#9b5de5', '#ffffff'];
+
+  for (let i = 0; i < 100; i++) {
+    const isBrick = Math.random() > 0.3;
+    particles.push({
+      x: Math.random() * confCanvas.width,
+      y: Math.random() * confCanvas.height - confCanvas.height,
+      w: isBrick ? Math.random() * 16 + 10 : Math.random() * 8 + 5,
+      h: isBrick ? Math.random() * 8 + 6 : Math.random() * 8 + 5,
+      isBrick,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 3 + 2,
+      rot: Math.random() * 360,
+      rotV: (Math.random() - 0.5) * 10
+    });
+  }
+
+  let frame = 0;
+  function animate() {
+    cctx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.rotV;
+      p.vy += 0.05;
+      cctx.save();
+      cctx.translate(p.x, p.y);
+      cctx.rotate(p.rot * Math.PI / 180);
+      if (p.isBrick) {
+        cctx.fillStyle = p.color;
+        cctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        cctx.fillStyle = 'rgba(255,255,255,0.3)';
+        cctx.fillRect(-p.w/2, -p.h/2, p.w, p.h * 0.3);
+        cctx.fillStyle = 'rgba(0,0,0,0.2)';
+        cctx.fillRect(-p.w/2, p.h/2 - p.h * 0.2, p.w, p.h * 0.2);
+        const studR = p.h * 0.2;
+        cctx.fillStyle = 'rgba(255,255,255,0.25)';
+        cctx.beginPath();
+        cctx.arc(-p.w/4, 0, studR, 0, Math.PI * 2);
+        cctx.arc(p.w/4, 0, studR, 0, Math.PI * 2);
+        cctx.fill();
+      } else {
+        cctx.beginPath();
+        cctx.arc(0, 0, p.w/2, 0, Math.PI * 2);
+        cctx.fillStyle = p.color;
+        cctx.fill();
+        cctx.beginPath();
+        cctx.arc(-p.w * 0.1, -p.w * 0.1, p.w * 0.2, 0, Math.PI * 2);
+        cctx.fillStyle = 'rgba(255,255,255,0.4)';
+        cctx.fill();
+      }
+      cctx.restore();
+    });
+    frame++;
+    if (frame < 150) {
+      requestAnimationFrame(animate);
+    } else {
+      cctx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+    }
+  }
+  animate();
+}
+
+// ==================== EVENT LISTENERS ====================
+guessInput.addEventListener('input', (e) => {
+  selectedSetId = null;
+  updateAutocomplete(e.target.value.trim());
+});
+
+guessInput.addEventListener('keydown', (e) => {
+  const items = autocompleteList.querySelectorAll('.autocomplete-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    autocompleteIdx = Math.min(autocompleteIdx + 1, items.length - 1);
+    items.forEach((it, i) => it.classList.toggle('selected', i === autocompleteIdx));
+    if (items[autocompleteIdx]) {
+      const id = items[autocompleteIdx].dataset.id;
+      const set = LEGO_SETS.find(s => s.set_num === id);
+      if (set) { guessInput.value = set.name; selectedSetId = set.set_num; }
+    }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    autocompleteIdx = Math.max(autocompleteIdx - 1, 0);
+    items.forEach((it, i) => it.classList.toggle('selected', i === autocompleteIdx));
+    if (items[autocompleteIdx]) {
+      const id = items[autocompleteIdx].dataset.id;
+      const set = LEGO_SETS.find(s => s.set_num === id);
+      if (set) { guessInput.value = set.name; selectedSetId = set.set_num; }
+    }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (autocompleteList.classList.contains('show') && items.length > 0) {
+      const idx = autocompleteIdx >= 0 ? autocompleteIdx : 0;
+      const id = items[idx]?.dataset.id;
+      const set = LEGO_SETS.find(s => s.set_num === id);
+      if (set) selectSet(set);
+    } else {
+      submitGuess();
+    }
+  } else if (e.key === 'Escape') {
+    autocompleteList.classList.remove('show');
+  }
+});
+
+submitBtn.addEventListener('click', submitGuess);
+
+document.getElementById('shareBtn').addEventListener('click', () => {
+  const text = document.getElementById('shareText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('shareBtn').innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+    setTimeout(() => { document.getElementById('shareBtn').innerHTML = '<i class="fa-regular fa-clipboard"></i> Copy Result'; }, 2000);
+  });
+});
+
+document.getElementById('closeModalBtn').addEventListener('click', () => resultModal.classList.remove('show'));
+
+document.getElementById('statsBtn').addEventListener('click', () => {
+  const stats = loadStats();
+  document.getElementById('statPlayed').textContent = stats.played;
+  document.getElementById('statWon').textContent = stats.won;
+  document.getElementById('statStreak').textContent = stats.streak;
+  document.getElementById('statTotal').textContent = LEGO_SETS.length.toLocaleString();
+  statsModal.classList.add('show');
+});
+
+document.getElementById('closeStatsBtn').addEventListener('click', () => statsModal.classList.remove('show'));
+
+streakBadge.addEventListener('click', () => document.getElementById('statsBtn').click());
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.input-area')) autocompleteList.classList.remove('show');
+});
+
+resultModal.addEventListener('click', (e) => { if (e.target === resultModal) resultModal.classList.remove('show'); });
+statsModal.addEventListener('click', (e) => { if (e.target === statsModal) statsModal.classList.remove('show'); });
+
+window.addEventListener('resize', () => render());
+
+// ==================== LOAD DATA & INIT ====================
+
+function parseJSON(raw) {
+  const arr = JSON.parse(raw);
+  if (!Array.isArray(arr) || arr.length === 0) return [];
+
+  const sets = [];
+  for (const row of arr) {
+    const numParts = parseInt(row.num_parts, 10) || 0;
+    const imgUrl = (row.img_url || '').trim();
+    if (numParts > 100 && imgUrl.startsWith('http')) {
+      const themeId = parseInt(row.theme_id, 10) || 0;
+      const theme = getThemeName(themeId);
+      const name = (row.name || '').trim();
+      const setNum = (row.set_num || '').trim();
+      const year = parseInt(row.year, 10) || 0;
+      const keywords = [name, setNum, theme, String(year), String(numParts)].join(' ').toLowerCase();
+      sets.push({ set_num: setNum, name, year, theme, pieces: numParts, img_url: imgUrl, _keywords: keywords });
+    }
+  }
+  return sets;
+}
+
+async function init() {
+  const loadingText = document.getElementById('loadingText');
+  const loadingScreen = document.getElementById('loadingScreen');
+
+  try {
+    loadingText.textContent = 'Loading sets...';
+    const resp = await fetch('sets.json');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const raw = await resp.text();
+
+    loadingText.textContent = 'Parsing sets...';
+    LEGO_SETS = parseJSON(raw);
+    LEGO_SETS.sort((a, b) => a.name.localeCompare(b.name));
+
+    dailySet = getDailySet(LEGO_SETS);
+
+    state = loadState();
+    if (state.date !== today) {
+      state = { date: today, guesses: [], stage: 0, finished: false, won: false };
+      saveState(state);
+    }
+
+    loadingText.textContent = `${LEGO_SETS.length.toLocaleString()} sets loaded!`;
+    setTimeout(() => {
+      loadingScreen.classList.add('hidden');
+      setTimeout(() => loadingScreen.style.display = 'none', 500);
+    }, 300);
+
+    render();
+    loadImage();
+
+    if (state.finished) {
+      if (state.won) {
+        feedbackEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Correct! You guessed it!';
+        feedbackEl.className = 'feedback correct';
+      } else {
+        feedbackEl.innerHTML = `<i class="fa-solid fa-face-sad-tear"></i> It was "${dailySet.name}"!`;
+        feedbackEl.className = 'feedback wrong';
+      }
+    }
+  } catch (err) {
+    loadingText.textContent = `Failed to load sets.json: ${err.message}`;
+    console.error(err);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
+
